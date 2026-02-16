@@ -1,5 +1,0 @@
-flet
-groq
-SpeechRecognition
-plyer
-requests

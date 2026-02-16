@@ -16,7 +16,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      # 🔥 AUTOMATIC FLUTTER INSTALLATION
+      # Flutter install kar rahe hain taaki FINAL step mein APK build kar sakein
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -24,20 +24,29 @@ jobs:
       - name: Install Python Dependencies
         run: pip install -r requirements.txt
 
-      - name: 🏗️ Create Project (Folder Name build_env)
+      - name: 🏗️ Create Project Skeleton
         run: |
-          # 🔥 FIX: 'yes |' lagaya hai taaki wo prompt par ruke nahi
-          # Aur ensure kiya hai ki command sahi ho
-          yes | flet build apk --project build_env --module-name main
+          # 1. Pehle ensure karo ki folder exist nahi karta (Clean Start)
+          rm -rf build_env
+          
+          # 2. Flet ko "y" feed karo taaki wo SDK download kar le
+          # '--verbose' flag lagaya hai taaki humein sab dikhe
+          echo "y" | flet build apk --project build_env --module-name main --verbose
+          
+          # 3. 🔥 CRITICAL CHECK: Agar project nahi bana, toh yahi rok do
+          if [ ! -f "build_env/pubspec.yaml" ]; then
+             echo "❌ ERROR: Flet failed to create project structure!"
+             echo "📂 Content of current directory:"
+             ls -R
+             exit 1
+          fi
+          echo "✅ Project Created Successfully!"
 
       - name: 💉 INJECT ALL PERMISSIONS (XML)
         run: |
-          # 🔥 FIX: Folder pehle khud bana lenge taaki error na aaye
-          mkdir -p build_env/android/app/src/main
-          
-          # Ab Manifest Overwrite karenge
           MANIFEST="build_env/android/app/src/main/AndroidManifest.xml"
           
+          # XML Inject karo
           cat <<EOF > $MANIFEST
           <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.app">
               
@@ -77,11 +86,9 @@ jobs:
 
       - name: 💉 INJECT KOTLIN (Auto-Popup Logic)
         run: |
-          # Kotlin file ka path set karo
           KOTLIN_FILE="build_env/android/app/src/main/kotlin/com/example/app/MainActivity.kt"
           mkdir -p $(dirname $KOTLIN_FILE)
           
-          # Kotlin Code jo Permissions maangega
           cat <<EOF > $KOTLIN_FILE
           package com.example.app
           import io.flutter.embedding.android.FlutterActivity
@@ -98,7 +105,6 @@ jobs:
                   super.configureFlutterEngine(flutterEngine)
                   
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                      // List of all permissions to request
                       val perms = arrayOf(
                           android.Manifest.permission.RECORD_AUDIO,
                           android.Manifest.permission.CAMERA,
@@ -110,15 +116,15 @@ jobs:
                           android.Manifest.permission.WRITE_EXTERNAL_STORAGE
                       )
 
-                      val requestList = ArrayList<String>()
+                      val reqList = ArrayList<String>()
                       for (p in perms) {
                           if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
-                              requestList.add(p)
+                              reqList.add(p)
                           }
                       }
 
-                      if (requestList.isNotEmpty()) {
-                          ActivityCompat.requestPermissions(this, requestList.toTypedArray(), 101)
+                      if (reqList.isNotEmpty()) {
+                          ActivityCompat.requestPermissions(this, reqList.toTypedArray(), 101)
                       }
                   }
               }
@@ -126,10 +132,10 @@ jobs:
           EOF
           echo "✅ Kotlin Logic Injected."
 
-      - name: 🚀 Build APK (Flutter)
+      - name: 🚀 Build APK (Using System Flutter)
         run: |
-          # Generated folder ke andar jao aur build karo
           cd build_env
+          flutter pub get
           flutter build apk --release
 
       - name: Upload APK

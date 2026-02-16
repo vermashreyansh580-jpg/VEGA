@@ -24,7 +24,7 @@ jobs:
       - name: Install Python Dependencies
         run: pip install -r requirements.txt
 
-      - name: 🏗️ Create Project (Folder Name: build_env)
+      - name: 🏗️ Create Project (Folder Name build_env)
         run: |
           # Flet ko bol rahe hain ki 'build_env' naam ka folder banaye
           flet build apk --project build_env --module-name main

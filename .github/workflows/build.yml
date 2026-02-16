@@ -1,0 +1,137 @@
+name: VEGA All-Permissions Build
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: pip install flet
+
+      - name: 🏗️ Generate Project Skeleton
+        run: |
+          # Flet project folder create karo
+          flet build apk --project --module-name main
+
+      - name: 💉 INJECT SUPER MANIFEST (XML)
+        run: |
+          # Purani manifest hatao, apni Power Wali daalo
+          MANIFEST="build/apk/android/app/src/main/AndroidManifest.xml"
+          
+          cat <<EOF > $MANIFEST
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.app">
+              
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+              <uses-permission android:name="android.permission.CAMERA"/>
+              
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+              
+              <uses-permission android:name="android.permission.READ_CONTACTS"/>
+              <uses-permission android:name="android.permission.WRITE_CONTACTS"/>
+              <uses-permission android:name="android.permission.READ_CALL_LOG"/>
+              <uses-permission android:name="android.permission.WRITE_CALL_LOG"/>
+              
+              <uses-permission android:name="android.permission.SEND_SMS"/>
+              <uses-permission android:name="android.permission.READ_SMS"/>
+              <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+              <uses-permission android:name="android.permission.CALL_PHONE"/>
+              <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+              
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+              <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+              
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+              <uses-permission android:name="android.permission.WAKE_LOCK"/>
+              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+              
+              <application android:label="VEGA GOD" android:icon="@mipmap/ic_launcher">
+                  <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          echo "✅ Super Manifest Injected."
+
+      - name: 💉 INJECT KOTLIN (Permission Request Logic)
+        run: |
+          KOTLIN_FILE="build/apk/android/app/src/main/kotlin/com/example/app/MainActivity.kt"
+          mkdir -p $(dirname $KOTLIN_FILE)
+          
+          # 🔥 KOTLIN CODE: Jo App khulte hi ye sab maangega
+          cat <<EOF > $KOTLIN_FILE
+          package com.example.app
+          import io.flutter.embedding.android.FlutterActivity
+          import androidx.annotation.NonNull
+          import io.flutter.embedding.engine.FlutterEngine
+          import android.content.pm.PackageManager
+          import android.os.Build
+          import androidx.core.app.ActivityCompat
+          import androidx.core.content.ContextCompat
+          import java.util.ArrayList
+
+          class MainActivity: FlutterActivity() {
+              override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
+                  super.configureFlutterEngine(flutterEngine)
+                  
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      // List of permissions needed
+                      val permissions = arrayOf(
+                          android.Manifest.permission.RECORD_AUDIO,
+                          android.Manifest.permission.CAMERA,
+                          android.Manifest.permission.ACCESS_FINE_LOCATION,
+                          android.Manifest.permission.READ_CONTACTS,
+                          android.Manifest.permission.READ_CALL_LOG,
+                          android.Manifest.permission.SEND_SMS,
+                          android.Manifest.permission.CALL_PHONE,
+                          android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                          android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                      )
+
+                      val permissionsToRequest = ArrayList<String>()
+                      for (perm in permissions) {
+                          if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                              permissionsToRequest.add(perm)
+                          }
+                      }
+
+                      if (permissionsToRequest.isNotEmpty()) {
+                          ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), 101)
+                      }
+                  }
+              }
+          }
+          EOF
+          echo "✅ Kotlin Permission Logic Injected."
+
+      - name: 🚀 Build APK
+        run: |
+          cd build/apk
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VEGA-ULTIMATE-APK
+          path: build/apk/build/app/outputs/flutter-apk/app-release.apk

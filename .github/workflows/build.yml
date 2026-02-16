@@ -16,7 +16,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      # 🔥 AUTOMATIC FLUTTER INSTALLATION
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -26,8 +25,8 @@ jobs:
 
       - name: 🏗️ Create Project (Folder Name build_env)
         run: |
-          # Flet ko bol rahe hain ki 'build_env' naam ka folder banaye
-          flet build apk --project build_env --module-name main
+          # 🔥 FIX: '--yes' lagaya hai taaki wo user input ka wait na kare
+          flet build apk --project build_env --module-name main --yes
 
       - name: 💉 INJECT ALL PERMISSIONS (XML)
         run: |

@@ -16,6 +16,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
+      # 🔥 AUTOMATIC FLUTTER INSTALLATION
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -25,12 +26,16 @@ jobs:
 
       - name: 🏗️ Create Project (Folder Name build_env)
         run: |
-          # 🔥 FIX: '--yes' lagaya hai taaki wo user input ka wait na kare
-          flet build apk --project build_env --module-name main --yes
+          # 🔥 FIX: 'yes |' lagaya hai taaki wo prompt par ruke nahi
+          # Aur ensure kiya hai ki command sahi ho
+          yes | flet build apk --project build_env --module-name main
 
       - name: 💉 INJECT ALL PERMISSIONS (XML)
         run: |
-          # Default Manifest hata kar apni Power Wali daal rahe hain
+          # 🔥 FIX: Folder pehle khud bana lenge taaki error na aaye
+          mkdir -p build_env/android/app/src/main
+          
+          # Ab Manifest Overwrite karenge
           MANIFEST="build_env/android/app/src/main/AndroidManifest.xml"
           
           cat <<EOF > $MANIFEST
